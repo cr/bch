@@ -1,0 +1,20 @@
+bch 0.2 - bc for hackers
+multi-base bc wrapper
+for easy base conversions
+by cr at 23 bit dot net
+Licensed under GPLv2
+
+installation:
+  chmod +x bch && sudo cp bch /usr/local/bin/
+
+usage: bch [-l|-d|-h|-o|-b] [<bc expression>]
+
+supported prefixes:
+  0x hex
+  0o octal
+  0b binary
+
+examples: 
+  bch -ld 0x1f3500/0x400+512
+  bch 0b10^0o1011-1
+

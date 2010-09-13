@@ -1,0 +1,83 @@
+#!/usr/bin/perl -w
+
+# bch 0.2 - bc for hackers
+# multi-base bc wrapper
+# for easy base conversions
+# by cr
+# Licensed under GPLv2
+#
+# usage: bch [-l|-d|-h|-o|-b] [<bc expression>]
+#
+# examples: 
+#   bch -ld 0x1f3500/0x400+512
+#   bch 0b10^0o1011-1
+
+use strict;
+use Getopt::Std;
+
+my %opt;
+getopts ('ldhob', \%opt);
+
+my $bcargs = $opt{l} ? '-l' : '';
+($opt{d}, $opt{h}, $opt{o}, $opt{b}) = (1, 1, 1, 1)
+  unless ($opt{d} || $opt{h} || $opt{o} || $opt{b});
+
+sub convert {
+  my ($inbase, $outbase, $value) = @_;
+  my $res;
+
+  if ($outbase == 10) {
+    $res = `echo "ibase=$inbase ; $value" | bc $bcargs`;
+  } else {
+    $res = `echo "ibase=$inbase ; obase=$outbase ; $value" | bc $bcargs`;
+  }
+  chomp $res;
+  $res =~ s/\\\n//sg;
+  $res =~ s/(\.[0-9A-F]*[1-9A-F])0+$/$1/;
+  return $res;
+}
+
+sub decimal {
+  my ($base, $value) = @_;
+  $value =~ tr/a-f/A-F/;
+  my $res;
+
+  SWITCH: {
+    $res = convert ( 2, 10, $value), last SWITCH if $base eq '0b';
+    $res = convert ( 8, 10, $value), last SWITCH if $base eq '0o';
+    $res = convert (16, 10, $value), last SWITCH if $base eq '0x';
+    $res = "ERR";
+  }
+
+  return $res;
+}
+
+my $input;
+my $result;
+my $trans;
+
+
+sub process {
+	$input = $_[0];
+	$input =~ s/(^|[^0-9A-Za-z) ]) *(0b|0o|0x)([0-9A-Fa-f.]+)/$1.&decimal($2,$3)/ge;
+
+	$result = `echo "$input" | bc $bcargs`;
+	$result =~ s/\\\n//sg;
+	chomp $result;
+
+	print "$result\n" if ($opt{d});
+	$trans = convert( 10, 16, $result ), print "0x$trans\n" if ($opt{h});
+	$trans = convert( 10, 8, $result ),  print "0o$trans\n" if ($opt{o});
+	$trans = convert( 10, 2, $result ),  print "0b$trans\n" if ($opt{b});
+}
+
+if( ! defined $ARGV[0] ) {
+	while( <> ) { process $_; }
+} else {
+	if( -e $ARGV[0] ) {
+		while( <> ) { process $_; }
+	} else {
+		foreach my $arg ( @ARGV ) { process $arg; }
+	}
+}
+
